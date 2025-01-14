@@ -1,0 +1,41 @@
+---
+- name: Check Connectivity with Master Server
+  hosts: all
+  vars:
+    master_fqdn: "{{ master_fqdn | default('master.server.local') }}"
+    port_number: 1556  # Default NetBackup port
+  tasks:
+    - name: Validate Certificates for Master Server (Linux)
+      command: "{{ nbu_bin_path }}/nbcertcmd -listCertDetails -json"
+      register: cert_output
+      when: ansible_os_family != 'Windows'
+
+    - name: Validate Certificates for Master Server (Windows)
+      win_shell: |
+        "{{ nbu_bin_path }}\nbcertcmd.exe -listCertDetails -json"
+      register: cert_output
+      when: ansible_os_family == 'Windows'
+
+    - name: Ping the Master Server
+      ping:
+        dest: "{{ master_fqdn }}"
+      register: ping_result
+
+    - name: Check Port Availability (Linux)
+      shell: "timeout 10 curl -s telnet://{{ master_fqdn }}:{{ port_number }}"
+      register: port_check
+      failed_when: port_check.rc != 0
+      when: ansible_os_family != 'Windows'
+
+    - name: Check Port Availability (Windows)
+      win_shell: |
+        Test-NetConnection -ComputerName "{{ master_fqdn }}" -Port "{{ port_number }}"
+      register: port_check
+      when: ansible_os_family == 'Windows'
+
+    - name: Output Connectivity Results
+      debug:
+        msg:
+          - "Certificate Validation Output: {{ cert_output }}"
+          - "Ping Result: {{ ping_result }}"
+          - "Port Check Result: {{ port_check }}"

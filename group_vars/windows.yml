@@ -1,0 +1,4 @@
+---
+os_family: windows
+installer: netbackup-windows.exe
+nbu_bin_path: C:\Program Files\Veritas\NetBackup\bin

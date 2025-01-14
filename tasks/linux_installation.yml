@@ -1,0 +1,37 @@
+---
+- name: Install NetBackup Client on Linux
+  hosts: all
+  vars:
+    nbu_package_url: "{{ nbu_package_url | default('http://repository.local/netbackup-linux.rpm') }}"
+    nbu_bin_path: "/usr/openv/netbackup/bin"
+  tasks:
+    - name: Ensure required directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      with_items:
+        - /usr/openv
+        - /usr/openv/netbackup
+
+    - name: Download NetBackup client package
+      get_url:
+        url: "{{ nbu_package_url }}"
+        dest: "/tmp/netbackup-client.rpm"
+
+    - name: Install NetBackup client
+      yum:
+        name: "/tmp/netbackup-client.rpm"
+        state: present
+
+    - name: Verify NetBackup binaries exist
+      stat:
+        path: "{{ nbu_bin_path }}"
+      register: nbu_bin_check
+
+    - name: Debug Binary Verification
+      debug:
+        msg: "NetBackup binaries exist at {{ nbu_bin_path }}"
+      when: nbu_bin_check.stat.exists

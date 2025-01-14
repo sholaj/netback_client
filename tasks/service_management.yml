@@ -1,0 +1,24 @@
+---
+- name: Manage NetBackup Services
+  hosts: all
+  tasks:
+    - name: Manage NetBackup Service (Windows)
+      win_service:
+        name: "{{ item.name }}"
+        state: "{{ item.state }}"
+      with_items:
+        - { name: 'bpdown.exe', state: 'stopped' }
+        - { name: 'bpup.exe', state: 'started' }
+      when: ansible_os_family == 'Windows'
+
+    - name: Stop NetBackup Service (Linux)
+      command: "{{ nbu_bin_path }}/bp.kill_all"
+      when:
+        - ansible_os_family != 'Windows'
+        - service_state == 'stopped'
+
+    - name: Start NetBackup Service (Linux)
+      command: "{{ nbu_bin_path }}/bp.start_all"
+      when:
+        - ansible_os_family != 'Windows'
+        - service_state == 'running'

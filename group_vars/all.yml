@@ -1,0 +1,4 @@
+---
+master_fqdn: master.server.local
+auth_token: default-token
+required_interface: eth0

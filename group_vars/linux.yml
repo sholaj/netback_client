@@ -1,0 +1,4 @@
+---
+os_family: linux
+package: netbackup-linux.rpm
+nbu_bin_path: /usr/openv/netbackup/bin

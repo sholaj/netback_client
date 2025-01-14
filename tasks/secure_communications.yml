@@ -1,0 +1,44 @@
+---
+- name: Ensure Secure Communications
+  hosts: all
+  vars:
+    master_fqdn: "{{ master_fqdn | default('master.server.local') }}"
+    auth_token: "{{ auth_token | default('default-token') }}"
+    required_interface: "{{ required_interface | default('eth0') }}"
+  tasks:
+    - name: Validate Master Server Certificates
+      command: "{{ nbu_bin_path }}/nbcertcmd -listCertDetails | grep 'Master Server'"
+      register: cert_validation
+      when: ansible_os_family != 'Windows'
+
+    - name: Deploy CA Certificate (Linux)
+      command: "{{ nbu_bin_path }}/nbcertcmd -getCACertificate -server {{ master_fqdn }}"
+      when: ansible_os_family != 'Windows'
+
+    - name: Deploy Host Certificate (Linux)
+      command: "{{ nbu_bin_path }}/nbcertcmd -getCertificate -server {{ master_fqdn }} -token {{ auth_token }} -force"
+      when: ansible_os_family != 'Windows'
+
+    - name: Deploy CA Certificate (Windows)
+      win_shell: |
+        "{{ nbu_bin_path }}\nbcertcmd.exe -getCACertificate -server {{ master_fqdn }}"
+      when: ansible_os_family == 'Windows'
+
+    - name: Deploy Host Certificate (Windows)
+      win_shell: |
+        "{{ nbu_bin_path }}\nbcertcmd.exe -getCertificate -server {{ master_fqdn }} -token {{ auth_token }} -force"
+      when: ansible_os_family == 'Windows'
+
+    - name: Configure Required Interface
+      command: echo "REQUIRED_INTERFACE={{ required_interface }}" > /tmp/nbu_interface.conf
+      when: ansible_os_family != 'Windows'
+
+    - name: Set Required Interface Configuration (Linux)
+      command: "{{ nbu_bin_path }}/nbsetconfig -f /tmp/nbu_interface.conf"
+      when: ansible_os_family != 'Windows'
+
+    - name: Configure Required Interface (Windows)
+      win_shell: |
+        echo REQUIRED_INTERFACE={{ required_interface }} > C:\nbu_interface.conf
+        "{{ nbu_bin_path }}\nbsetconfig.exe -f C:\nbu_interface.conf"
+      when: ansible_os_family == 'Windows'

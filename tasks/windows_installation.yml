@@ -1,0 +1,30 @@
+---
+- name: Install NetBackup Client on Windows
+  hosts: all
+  vars:
+    nbu_installer_url: "{{ nbu_installer_url | default('http://repository.local/netbackup-windows.exe') }}"
+    nbu_installer_path: "C:\\temp\\netbackup-windows.exe"
+  tasks:
+    - name: Create Temp Directory
+      win_file:
+        path: "C:\\temp"
+        state: directory
+
+    - name: Download NetBackup Installer
+      win_get_url:
+        url: "{{ nbu_installer_url }}"
+        dest: "{{ nbu_installer_path }}"
+
+    - name: Install NetBackup Client
+      win_shell: |
+        "{{ nbu_installer_path }}" /quiet /norestart
+
+    - name: Verify Installation
+      win_stat:
+        path: "C:\\Program Files\\Veritas\\NetBackup\\bin\\bpclntcmd.exe"
+      register: install_check
+
+    - name: Debug Installation Verification
+      debug:
+        msg: "NetBackup installed successfully"
+      when: install_check.stat.exists
