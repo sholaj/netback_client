@@ -1,6 +1,6 @@
 # netback_client
 
-Thank you for providing the file structure. Based on the file structure shown in the screenshot, the Puppet module for NetBackup client appears to have the following components:
+Puppet module for NetBackup client has the following components:
 
 ## Directory Overview:
 1. **data/**: Contains Hiera data files to manage configurations or hierarchies for different operating systems or environments.
@@ -42,3 +42,45 @@ Below is the plan to convert these functionalities into Ansible playbooks:
     - **Port Check**: Use `nc` or `telnet` commands wrapped in Ansible tasks
 3. **Secure Communications**: Create tasks for certificate validation and deployment using the `command` module to execute the equivalent commands (e.g., `nbcertcmd`).
 4. **Dynamic Variables**: Use group and host variables (`group_vars` and `host_vars`) to mimic Hiera functionality.
+
+```
+ansible_collections/
+└── veritasOs/
+    ├── netbackup_profile/
+    │   ├── docs/               # Documentation files
+    │   ├── files/              # Static files
+    │   ├── plugins/            # Custom plugins (if needed)
+    │   │   ├── action/
+    │   │   ├── connection/
+    │   │   ├── filter/
+    │   │   ├── inventory/
+    │   │   ├── lookup/
+    │   │   ├── modules/
+    │   │   └── callback/
+    │   ├── roles/              # Roles for modular tasks
+    │   │   ├── linux_profile/
+    │   │   └── windows_profile/
+    │   ├── playbooks/          # Example playbooks
+    │   │   ├── profile_linux.yml
+    │   │   └── profile_windows.yml
+    └── netbackup_client/
+        ├── docs/               # Documentation files
+        ├── files/              # Static files
+        ├── plugins/            # Custom plugins (if needed)
+        │   ├── action/
+        │   ├── connection/
+        │   ├── filter/
+        │   ├── inventory/
+        │   ├── lookup/
+        │   ├── modules/
+        │   └── callback/
+        ├── roles/              # Roles for modular tasks
+        │   ├── linux_client/
+        │   └── windows_client/
+        ├── playbooks/          # Example playbooks
+        │   ├── install_linux.yml
+        │   └── install_windows.yml
+        └── tests/              # Unit and integration tests
+            ├── integration/
+            └── unit/
+```
