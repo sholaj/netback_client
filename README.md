@@ -313,6 +313,7 @@ By following this guide, you can efficiently convert Puppet modules to Ansible r
 ## Directory Overview:
 
 
+```shell
 puppet_netbackup_client-master/
 ├── .vscode/
 │   └── extensions.json
@@ -378,6 +379,9 @@ puppet_netbackup_client-master/
 ├── README.md
 ├── REFERENCE.md
 └── netbackup_client.md
+
+```
+
 
 ## Directory Overview:
 1. **data/**: Contains environment-specific or OS-specific configurations.
@@ -534,5 +538,5 @@ end
 **Puppet ERB Template:**
 
 ```erb
-    
+
 
