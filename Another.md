@@ -4,7 +4,7 @@ Directory Overview:
 	1.	data/:
 	•	Contains Hiera data files to manage configurations or hierarchies for different operating systems or environments.
 	2.	features/:
-	•	Likely stores feature toggles or specific logic to implement optional functionality.
+	•	Likely stores feature toggles or specific log ic to implement optional functionality.
 	3.	files/:
 	•	Stores static files, such as binaries, configuration files, or scripts required during the NetBackup client installation.
 	4.	lib/facter/:

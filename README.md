@@ -84,3 +84,227 @@ ansible_collections/
             ├── integration/
             └── unit/
 ```
+
+
+## Directory Structure:
+The Puppet repository for the NetBackup client module has the following directory structure:
+
+``` 
+puppet_netbackup_client/
+├─
+
+Puppet to Ansible Conversion Documentation
+
+Puppet Directory Structure and Contents
+
+The following is the directory structure of the Puppet repository for the NetBackup client module:
+
+puppet_netbackup_client/
+├── data/
+│   ├── os/
+│       ├── RedHat/
+│           ├── RedHat.yaml
+│       ├── windows.yaml
+├── files/
+│   ├── netbackup_client_config.rb
+│   ├── netbackup_client_config_nix.rb
+│   ├── netbackup_client_config_windows.rb
+├── manifests/
+│   ├── init.pp
+│   ├── service.pp
+│   ├── install.pp
+├── tasks/
+│   ├── netbackup_client_task.rb
+│   ├── netbackup_client_task_check_connectivity.rb
+│   ├── netbackup_client_task_ensure_secure_comms.rb
+│   ├── netbackup_client_task_ensure_services.rb
+├── templates/
+│   ├── exclude_list.erb
+│   ├── NBInstallAnswer_no_secure_comms.conf.erb
+│   ├── NBInstallAnswer_secure_comms.conf.erb
+│   ├── silentclient-9.1.0.1.cmd.erb
+
+Directory and File Descriptions
+
+1. data/ Directory
+	•	Purpose: Contains environment-specific or OS-specific configurations.
+	•	Files:
+	•	RedHat.yaml: Defines repositories and packages required for RedHat installations.
+	•	windows.yaml: Defines installer paths and packages for Windows installations.
+	•	Ansible Translation:
+	•	These files map to group_vars/ or host_vars/ in Ansible.
+	•	For example:
+	•	RedHat.yaml → group_vars/redhat.yml
+	•	windows.yaml → group_vars/windows.yml
+
+2. files/ Directory
+	•	Purpose: Holds static files like configuration scripts and reusable Ruby modules.
+	•	Files:
+	•	netbackup_client_config.rb: Defines shared configurations for NetBackup.
+	•	netbackup_client_config_nix.rb: Extends the configuration for Linux systems.
+	•	netbackup_client_config_windows.rb: Extends the configuration for Windows systems.
+	•	Ansible Translation:
+	•	Static files remain in the files/ directory of the Ansible role.
+	•	Ruby logic is replaced by Ansible tasks for platform-specific configurations.
+
+3. manifests/ Directory
+	•	Purpose: Contains Puppet classes to define resources, dependencies, and workflows.
+	•	Files:
+	•	init.pp: Entry point for the module, defining the overall workflow.
+	•	service.pp: Manages NetBackup services.
+	•	install.pp: Handles package installation and configuration.
+	•	Ansible Translation:
+	•	Puppet classes are broken into modular tasks in Ansible roles:
+	•	init.pp → tasks/main.yml
+	•	service.pp → tasks/service.yml
+	•	install.pp → tasks/install.yml
+
+4. tasks/ Directory
+	•	Purpose: Implements specific functions like checking connectivity, ensuring services, and managing certificates.
+	•	Files:
+	•	netbackup_client_task.rb: Base class for NetBackup tasks.
+	•	netbackup_client_task_check_connectivity.rb: Validates connectivity with the master server.
+	•	netbackup_client_task_ensure_secure_comms.rb: Ensures secure communication setup.
+	•	netbackup_client_task_ensure_services.rb: Ensures required services are running.
+	•	Ansible Translation:
+	•	Each task is translated into a YAML file under tasks/ in the Ansible role.
+	•	For example:
+	•	netbackup_client_task_check_connectivity.rb → tasks/check_connectivity.yml
+	•	netbackup_client_task_ensure_secure_comms.rb → tasks/secure_comm.yml
+
+5. templates/ Directory
+	•	Purpose: Stores ERB templates for dynamically generated configuration files.
+	•	Files:
+	•	exclude_list.erb: Defines exclude list for NetBackup.
+	•	NBInstallAnswer_no_secure_comms.conf.erb: Configuration without secure communication.
+	•	NBInstallAnswer_secure_comms.conf.erb: Configuration with secure communication.
+	•	silentclient-9.1.0.1.cmd.erb: Silent installation script for Windows.
+	•	Ansible Translation:
+	•	Templates are converted into Jinja2 format and placed in the templates/ directory of the Ansible role.
+	•	For example:
+	•	exclude_list.erb → templates/exclude_list.j2
+	•	NBInstallAnswer_secure_comms.conf.erb → templates/NBInstallAnswer_secure_comms.conf.j2
+
+Ansible Directory Structure and Mapping
+
+Below is the equivalent Ansible directory structure, with the corresponding mapping from Puppet files:
+
+ansible_netbackup_client/
+├── roles/
+│   ├── netbackup_client/
+│       ├── tasks/
+│       │   ├── main.yml                  # Equivalent to init.pp
+│       │   ├── install.yml               # Equivalent to install.pp
+│       │   ├── service.yml               # Equivalent to service.pp
+│       │   ├── check_connectivity.yml    # From netbackup_client_task_check_connectivity.rb
+│       │   ├── secure_comm.yml           # From netbackup_client_task_ensure_secure_comms.rb
+│       ├── templates/
+│       │   ├── exclude_list.j2           # From exclude_list.erb
+│       │   ├── NBInstallAnswer_secure_comms.conf.j2
+│       ├── vars/
+│       │   ├── redhat.yml                # From RedHat.yaml
+│       │   ├── windows.yml               # From windows.yaml
+├── inventories/
+│   ├── production.yml
+│   ├── staging.yml
+
+Puppet-to-Ansible Workflow Translation
+
+Example 1: Puppet Class (manifests/install.pp)
+
+Puppet Code:
+
+class netbackup_client::install {
+  file { '/etc/netbackup/config':
+    ensure  => file,
+    content => template('netbackup/config.erb'),
+  }
+  package { 'netbackup':
+    ensure => installed,
+  }
+}
+
+Ansible Equivalent:
+
+---
+- name: Install NetBackup Client
+  hosts: all
+  tasks:
+    - name: Ensure NetBackup config exists
+      template:
+        src: config.j2
+        dest: /etc/netbackup/config
+        mode: '0644'
+
+    - name: Install NetBackup package
+      yum:
+        name: netbackup
+        state: present
+
+Example 2: Puppet Task (tasks/netbackup_client_task_check_connectivity.rb)
+
+Puppet Code:
+
+def check_cert_for_master_cmd
+  raise 'SubclassResponsibility'
+end
+
+Ansible Equivalent:
+
+---
+- name: Validate Certificates for Master Server
+  hosts: all
+  tasks:
+    - name: Run certificate validation command
+      shell: nbcertcmd -listCertDetails -json
+      register: cert_output
+
+    - name: Debug certificate output
+      debug:
+        msg: "{{ cert_output.stdout }}"
+
+Example 3: Puppet Template (templates/NBInstallAnswer_secure_comms.conf.erb)
+
+Puppet ERB Template:
+
+SERVER = <%= @master_server %>
+CLIENT_NAME = <%= @client_name %>
+CA_CERTIFICATE_FINGERPRINT = <%= @ca_fingerprint %>
+
+Ansible Jinja2 Template:
+
+SERVER = {{ master_server }}
+CLIENT_NAME = {{ client_name }}
+CA_CERTIFICATE_FINGERPRINT = {{ ca_fingerprint }}
+
+Example 4: Puppet Data (data/os/RedHat/RedHat.yaml)
+
+Puppet YAML:
+
+netbackup_client::package_config_lookup:
+  "8.1.1.0":
+    repos:
+      - rhel-6-tooling
+      - rhel-7-tooling
+    packages:
+      VRTSpbx:
+        ensure: "8.1.0.0"
+
+Ansible Group Vars:
+
+repos:
+  - rhel-6-tooling
+  - rhel-7-tooling
+
+packages:
+  VRTSpbx:
+    ensure: "8.1.0.0"
+
+Summary
+
+This documentation provides:
+	•	A detailed overview of the Puppet repository structure.
+	•	The purpose of each directory and file.
+	•	Examples of Ansible equivalents for Puppet classes, tasks, templates, and data.
+	•	A mapped Ansible directory structure for easy migration.
+
