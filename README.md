@@ -308,3 +308,231 @@ This documentation provides:
 	•	Examples of Ansible equivalents for Puppet classes, tasks, templates, and data.
 	•	A mapped Ansible directory structure for easy migration.
 
+By following this guide, you can efficiently convert Puppet modules to Ansible roles, ensuring a seamless transition and maintaining functionality across configuration management tools.
+```
+## Directory Overview:
+
+
+puppet_netbackup_client-master/
+├── .vscode/
+│   └── extensions.json
+├── data/
+│   ├── os/
+│   │   ├── RedHat/
+│   │   │   └── RedHat.yaml
+│   │   └── windows.yaml
+├── files/
+│   ├── netbackup_client_config_nix.rb
+│   ├── netbackup_client_config_windows.rb
+│   ├── netbackup_client_config.rb
+│   ├── netbackup_client_task_check_connectivity.rb
+│   ├── netbackup_client_task_ensure_secure_comms.rb
+│   ├── netbackup_client_task_ensure_services.rb
+│   └── netbackup_client_task.rb
+├── manifests/
+│   ├── config.pp
+│   ├── init.pp
+│   ├── install.pp
+│   ├── service.pp
+│   └── windows_install.pp
+├── tasks/
+│   ├── check_connectivity_nix.json
+│   ├── check_connectivity_nix.rb
+│   ├── check_connectivity_windows.json
+│   ├── check_connectivity_windows.rb
+│   ├── check_connectivity.json
+│   ├── ensure_secure_comms_nix.json
+│   ├── ensure_secure_comms_nix.rb
+│   ├── ensure_secure_comms_windows.json
+│   ├── ensure_secure_comms_windows.rb
+│   ├── ensure_services_nix.json
+│   ├── ensure_services_nix.rb
+│   ├── ensure_services_windows.json
+│   ├── ensure_services_windows.rb
+│   └── ensure_services.json
+├── spec/
+│   └── fixtures.yml
+├── templates/
+│   ├── exclude_list.erb
+│   ├── NBInstallAnswer_no_secure_comms.conf.erb
+│   ├── NBInstallAnswer_secure_comms.conf.erb
+│   └── silentclient-9.1.0.1.cmd.erb
+├── types/
+│   ├── package_config_lookup.pp
+│   └── package_config.pp
+├── confighooks/
+├── .gitattributes
+├── .gitignore
+├── .pdkignore
+├── .puppet-lint.rc
+├── .rspec
+├── .rubocop.yml
+├── .sync.yml
+├── .travis.yml
+├── Gemfile
+├── Gemfile.local
+├── metadata.json
+├── hiera.yaml
+├── Rakefile
+├── CHANGELOG.md
+├── README.md
+├── REFERENCE.md
+└── netbackup_client.md
+
+## Directory Overview:
+1. **data/**: Contains environment-specific or OS-specific configurations.
+    - **os/**:
+        - **RedHat/**: Contains RedHat-specific configurations.
+            - **RedHat.yaml**: Defines repositories and packages required for RedHat installations.
+        - **windows.yaml**: Defines installer paths and packages for Windows installations.
+2. **files/**: Holds static files like configuration scripts and reusable Ruby modules.
+    - **netbackup_client_config.rb**: Defines shared configurations for NetBackup.
+    - **netbackup_client_config_nix.rb**: Extends the configuration for Linux systems.
+    - **netbackup_client_config_windows.rb**: Extends the configuration for Windows systems.
+3. **manifests/**: Contains Puppet classes to define resources, dependencies, and workflows.
+    - **config.pp**: Manages NetBackup configurations.
+    - **init.pp**: Entry point for the module, defining the overall workflow.
+    - **install.pp**: Handles package installation and configuration.
+    - **service.pp**: Manages NetBackup services.
+    - **windows_install.pp**: Handles Windows-specific installation tasks.
+4. **tasks/**: Implements specific functions like checking connectivity, ensuring services, and managing certificates.
+    - **netbackup_client_task.rb**: Base class for NetBackup tasks.
+    - **netbackup_client_task_check_connectivity.rb**: Validates connectivity with the master server.
+    - **netbackup_client_task_ensure_secure_comms.rb**: Ensures secure communication setup.
+    - **netbackup_client_task_ensure_services.rb**: Ensures required services are running.
+5. **templates/**: Stores ERB templates for dynamically generated configuration files.
+    - **exclude_list.erb**: Defines the exclude list for NetBackup.
+    - **NBInstallAnswer_no_secure_comms.conf.erb**: Configuration without secure communication.
+    - **NBInstallAnswer_secure_comms.conf.erb**: Configuration with secure communication.
+    - **silentclient-   
+6. **types/**: Contains custom resource types for Puppet to extend functionality specific to NetBackup.
+7. **spec/**: Contains fixtures for testing purposes.
+8. **confighooks/**: Hooks for configuration management.
+9. **.vscode/**: Contains settings for Visual Studio Code.
+10. **.gitattributes**: Git attributes file.
+11. **.gitignore**: Git ignore rules.
+12. **.pdkignore**: Puppet Development Kit ignore file.
+13. **.puppet-lint.rc**: Puppet lint configuration file.
+14. **.rspec**: RSpec configuration file.
+15. **.rubocop.yml**: RuboCop configuration file.
+16. **.sync.yml**: Sync configuration file.
+17. **.travis.yml**: Travis CI configuration file.
+18. **Gemfile**: Ruby Gem dependencies file.
+19. **Gemfile.local**: Local Gem dependencies file.
+20. **metadata.json**: Module metadata file.
+21. **hiera.yaml**: Hiera configuration file.
+22. **Rakefile**: Ruby build automation file.
+23. **CHANGELOG.md**: Module change log.
+24. **README.md**: Module README file.
+
+
+## Workflow Logic:
+1. **Custom Facts (types/)**: Custom facts used to collect system-specific information.
+2. **Hiera Configuration (data/)**: Environment-specific values for variables like the NetBackup server, installation paths, and dependencies.
+3. **Manifest Files (manifests/)**: Main installation logic, including package management, service configuration, dependency handling, and classes for installation, configuration, and service management.
+4. **Templates (templates/)**: Dynamically generates configuration files like `bp.conf` based on variables (e.g., NetBackup master server, media server).
+5. **Static Files (files/)**: Stores NetBackup client binaries, scripts, or preconfigured files required for installation.
+6. **Tasks (tasks/)**: Performs specific actions like applying configuration changes or restarting services.
+7. **Types (types/)**: Custom resource types for Puppet to extend functionality specific to NetBackup.
+8. **Spec (spec/)**: Contains fixtures for testing purposes.
+9. **Confighooks (confighooks/)**: Hooks for configuration management.
+
+
+## Conversion Plan to Ansible:
+
+### Ansible Directory Structure and Mapping:
+
+```plaintext
+
+ansible_netbackup_client/
+├── roles/
+│   ├── netbackup_client/
+│   │   ├── tasks/
+│   │   │   ├── main.yml                  # Equivalent to init.pp
+│   │   │   ├── install.yml               # Equivalent to install.pp
+│   │   │   ├── service.yml               # Equivalent to service.pp
+│   │   │   ├── check_connectivity.yml    # From netbackup_client_task_check_connectivity.rb
+│   │   │   ├── ensure_secure_comms.yml   # From netbackup_client_task_ensure_secure_comms.rb
+│   │   │   ├── ensure_services.yml       # From netbackup_client_task_ensure_services.rb
+│   │   ├── templates/
+│   │   │   ├── exclude_list.j2           # From exclude_list.erb
+│   │   │   ├── NBInstallAnswer_secure_comms.conf.j2
+│   │   ├── vars/
+│   │   │   ├── redhat.yml                # From RedHat.yaml
+│   │   │   ├── windows.yml               # From windows.yaml
+├── inventories/
+│   ├── production.yml
+│   ├── staging.yml
+
+```
+
+### Puppet-to-Ansible Workflow Translation:
+
+#### Example 1: Puppet Class (manifests/install.pp)
+
+**Puppet Code:**
+
+```puppet
+class netbackup_client::install {
+  file { '/etc/netbackup/config':
+    ensure  => file,
+    content => template('netbackup/config.erb'),
+  }
+  package { 'netbackup':
+    ensure => installed,
+  }
+}
+```
+
+**Ansible Equivalent:**
+
+```yaml
+---
+- name: Install NetBackup Client
+  hosts: all
+  tasks:
+    - name: Ensure NetBackup config exists
+      template:
+        src: config.j2
+        dest: /etc/netbackup/config
+        mode: '0644'
+
+    - name: Install NetBackup package
+      yum:
+        name: netbackup
+        state: present
+```
+
+#### Example 2: Puppet Task (tasks/netbackup_client_task_check_connectivity.rb)
+
+**Puppet Code:**
+
+```ruby
+def check_cert_for_master_cmd
+  raise 'SubclassResponsibility'
+end
+``` 
+
+**Ansible Equivalent:**
+
+```yaml
+---
+- name: Validate Certificates for Master Server
+  hosts: all
+  tasks:
+    - name: Run certificate validation command
+      shell: nbcertcmd -listCertDetails -json
+      register: cert_output
+
+    - name: Debug certificate output
+      debug:
+        msg: "{{ cert_output.stdout }}"
+```
+
+#### Example 3: Puppet Template (templates/NBInstallAnswer_secure_comms.conf.erb)
+
+**Puppet ERB Template:**
+
+```erb
+    
+
