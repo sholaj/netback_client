@@ -1,0 +1,78 @@
+# VSCode Settings
+```json
+{
+    // Editor settings for a smooth workflow
+    "editor.fontFamily": "'Fira Code', 'Courier New', monospace",
+    "editor.fontSize": 14,
+    "editor.tabSize": 2,
+    "editor.wordWrap": "on",
+    "editor.minimap.enabled": true,
+    "editor.renderWhitespace": "all",
+    "editor.formatOnSave": true,
+    "editor.autoClosingBrackets": "always",
+    "editor.autoClosingQuotes": "always",
+    "editor.codeActionsOnSave": {
+        "source.fixAll": true,
+        "source.organizeImports": true
+    },
+    // Autosave settings
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    // Terminal integration with PowerShell and Git Bash
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        },
+        "Git Bash": {
+            "path": "C:\\Program Files\\Git\\bin\\bash.exe"
+        }
+    },
+    // Git and source control
+    "git.enableSmartCommit": true,
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.fetchOnPull": true,
+    // Extensions recommendations for your work
+    "extensions.ignoreRecommendations": false,
+    "workbench.colorTheme": "Visual Studio Dark",
+    "workbench.iconTheme": "material-icon-theme",
+    "workbench.startupEditor": "newUntitledFile",
+    // Linter and formatting settings for Ansible, Puppet, Python, and Ruby
+    "yaml.schemas": {
+        "https://json.schemastore.org/ansible-stable-2.9": "**/*.yml"
+    },
+    "ansible.languageServer.enabled": true,
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "python.formatting.provider": "black",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "ruby.lint": {
+        "reek": true,
+        "rubocop": true,
+        "ruby": true
+    },
+    // Task runner configuration
+    "tasks.autoDetect": "on",
+    // Miscellaneous
+    "breadcrumbs.enabled": true,
+    "debug.console.wordWrap": true,
+    "window.zoomLevel": 0,
+    "explorer.confirmDragAndDrop": false,
+    "explorer.confirmDelete": false,
+    // IntelliSense and autocomplete
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": true
+    },
+    "editor.suggestSelection": "first",
+    "editor.parameterHints.enabled": true,
+    // Integrated terminal configuration
+    "terminal.integrated.shellArgs.windows": [
+        "-l"
+    ]
+}
+
+
+````
