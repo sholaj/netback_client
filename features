@@ -1,0 +1,167 @@
+
+## Key Features and Components
+
+### 1. Input Parameters and Configuration
+
+The class defines several input parameters to configure the NetBackup client installation. These parameters add flexibility and allow customization during deployment:
+
+- **Parameters:**
+    - `package_version`: Specifies the version of the NetBackup package to install.
+    - `client_installed`: A Boolean indicating whether the client is already installed.
+    - `installed_version`: The version of the installed client, used for version comparison.
+    - `client_name`: The name of the client for identification purposes.
+    - `master_server`: Specifies the master server for the NetBackup client.
+    - `skip_certs`: A Boolean to skip certificate checks.
+    - `media_servers`: A configuration parameter specifying the list of media servers.
+    - `ca_fingerprint`: Optional parameter for the CA certificate fingerprint.
+    - `auth_token`: Optional authentication token for secure communication.
+    - `package_config_lookup`: Optional parameter for looking up additional package configuration.
+
+### 2. OS Family Check
+
+Ensures compatibility with the target operating system (OS). Only RedHat is supported for the NetBackup installation:
+
+```puppet
+unless $::facts['os']['family'] == 'Redhat' {
+    unless $client_installed and ($installed_version == $package_version) {
+        fail("Package management on ${::facts['os']['family']} is not supported.")
+    }
+}
+```
+
+### 3. Scenario-Based Logic
+
+The class uses scenarios to handle various installation conditions, enhancing reusability and modularity. The scenarios include:
+
+- **Scenario Install:** For fresh installations.
+- **Scenario Switch Packages:** To switch between different versions or distributions.
+- **Scenario Manage Version:** For managing upgrades or downgrades.
+- **Scenario Ensure:** To ensure the package is installed and in the desired state.
+
+### 4. Dynamic Answer File Generation
+
+Generates an answer file (`NBInstallAnswer.conf`) based on the parameters provided. This file customizes the NetBackup client installation process:
+
+```puppet
+file { $answer_file:
+    ensure  => file,
+    backup  => false,
+    owner   => root,
+    group   => root,
+    mode    => '0600',
+    content => template("netbackup_client/NBInstallAnswer${secure_comms_lable}.conf.erb"),
+    before  => Package['VRTSnbcfg'],
+}
+```
+
+### 5. Secure vs. Non-Secure Communication
+
+Configures secure or non-secure communication modes based on the presence of `ca_fingerprint`:
+
+```puppet
+if $ca_fingerprint =~ Netbackup_config::Ca_fingerprint {
+    $secure_comms_label = '_secure_comms'
+} else {
+    $secure_comms_label = '_no_secure_comms'
+}
+```
+
+### 6. Package Management
+
+Handles package installation, removal, and version switching using Puppet’s package resource:
+
+```puppet
+package { 'VRTSnbcfg':
+    *      => $install_options_obj,
+    ensure => package_version,
+}
+```
+
+Dependencies are dynamically resolved using the `package_config_lookup` parameter.
+
+### 7. Service Management
+
+Manages NetBackup-related services such as `netbackup` and `vxpbx_exchange`:
+
+```puppet
+service { 'netbackup':
+    ensure     => running,
+    hasrestart => false,
+    enable     => true,
+}
+```
+
+### 8. Repository Management
+
+Dynamically enables or disables repositories based on conditions. This is especially useful when managing multiple versions or restricted repositories:
+
+```puppet
+if $repos_that_exist =~ Array[String[1],1] {
+    $repo_csv = join($repos_that_exist, ',')
+    $install_options_obj = {
+        install_options => [
+            '--disablerepo=*',
+            "--enablerepo=${repo_csv}",
+        ],
+    }
+} else {
+    $install_options_obj  = {}
+}
+```
+
+### 9. Cleanup Tasks
+
+Removes unnecessary packages and cleans up temporary files (e.g., answer files) to maintain a clean environment:
+
+```puppet
+exec { 'clean answer file':
+    command     => "rm -f ${answer_file}",
+    path        => '/bin:/sbin:/usr/bin:/usr/sbin',
+    require     => Package['VRTSnbcfg'],
+    refreshonly => true,
+    onlyif      => "ls ${answer_file}",
+}
+```
+
+### 10. Error Handling
+
+Implements robust error handling and validation checks:
+
+- Ensures scenarios are recognized and valid.
+- Validates repository availability and package dependencies.
+- Verifies critical parameters like `media_servers`.
+
+### 11. Modular Design
+
+The Puppet code is organized into multiple classes and files to separate concerns:
+
+- `netbackup_client::install`: Handles installation and version management.
+- `netbackup_client::service`: Manages services related to the NetBackup client.
+- **Dynamic Templates:** Used for generating configuration files (`NBInstallAnswer.conf`).
+
+### 12. Logging and Debugging
+
+Uses `info` and `fail` statements to log important events and errors for debugging purposes:
+
+```puppet
+info('SCENARIO-MANAGE-VERSION')
+fail('Bug in netbackup_client::install SCENARIO not recognised!')
+```
+
+## Summary of Features
+
+| Feature                | Description                                                                 |
+|------------------------|-----------------------------------------------------------------------------|
+| Input Parameters       | Flexible configuration for package version, servers, certificates, etc.     |
+| Scenario-Based Logic   | Modular handling of different installation and upgrade scenarios.           |
+| OS Family Validation   | Ensures compatibility with the target operating system (supports only RedHat). |
+| Answer File Generation | Dynamically generates answer files for customized installation.             |
+| Secure Communication   | Configures secure or non-secure communication based on certificates.        |
+| Package Management     | Installs, removes, or upgrades packages with dependency management.         |
+| Service Management     | Manages NetBackup-related services to ensure proper functionality.          |
+| Repository Management  | Enables or disables repositories dynamically based on conditions.           |
+| Cleanup Tasks          | Removes temporary files and unnecessary packages.                           |
+| Error Handling         | Validates input, handles scenarios, and provides meaningful error messages. |
+| Logging and Debugging  | Logs installation events and errors for better visibility.                  |
+| Modular Design         | Separates installation, service management, and configuration tasks for better maintainability. |
+

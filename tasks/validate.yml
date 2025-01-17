@@ -1,0 +1,82 @@
+---
+- name: Validate NetBackup Client Configuration Post-Conversion
+  hosts: all
+  become: yes
+  vars:
+    package_name: "VRTSnbcfg"
+    expected_package_version: "8.1.1.0"
+    expected_services:
+      - "netbackup"
+      - "vxpbx_exchanged"
+    answer_file_path: "/tmp/NBInstallAnswer.conf"
+
+  tasks:
+    - name: Verify package installation
+      command: rpm -q {{ package_name }}
+      register: package_check
+      ignore_errors: true
+
+    - name: Assert package is installed
+      assert:
+        that:
+          - package_check.rc == 0
+          - package_check.stdout is search("{{ expected_package_version }}")
+        fail_msg: "Package {{ package_name }} is not installed or the version is incorrect"
+        success_msg: "Package {{ package_name }} is installed with the correct version"
+
+    - name: Verify required services are running
+      block:
+        - name: Check status of required services
+          service_facts:
+
+        - name: Assert services are running
+          assert:
+            that:
+              - "'{{ item }}' in ansible_facts.services"
+              - ansible_facts.services[item].state == "running"
+            fail_msg: "Service {{ item }} is not running"
+            success_msg: "Service {{ item }} is running as expected"
+          loop: "{{ expected_services }}"
+
+    - name: Validate answer file presence
+      stat:
+        path: "{{ answer_file_path }}"
+      register: answer_file_status
+
+    - name: Assert answer file exists
+      assert:
+        that:
+          - answer_file_status.stat.exists
+        fail_msg: "Answer file {{ answer_file_path }} does not exist"
+        success_msg: "Answer file {{ answer_file_path }} is present as expected"
+
+    - name: Verify secure or non-secure communication
+      command: grep 'secure_comms' {{ answer_file_path }}
+      register: secure_comms_check
+      ignore_errors: true
+
+    - name: Assert secure communications configuration
+      assert:
+        that:
+          - "'_secure_comms' in secure_comms_check.stdout or '_no_secure_comms' in secure_comms_check.stdout"
+        fail_msg: "Secure or non-secure communication configuration is missing in {{ answer_file_path }}"
+        success_msg: "Secure or non-secure communication configuration is present in {{ answer_file_path }}"
+
+    - name: Validate installed version
+      command: /usr/openv/netbackup/bin/bpclntcmd -version
+      register: installed_version
+      ignore_errors: true
+
+    - name: Assert correct installed version
+      assert:
+        that:
+          - installed_version.rc == 0
+          - "'{{ expected_package_version }}' in installed_version.stdout"
+        fail_msg: "NetBackup client version does not match {{ expected_package_version }}"
+        success_msg: "NetBackup client version matches {{ expected_package_version }}"
+
+    - name: Validate NetBackup client configuration
+      include_tasks: validate.yml
+      vars:
+        nbu_bin_path: "/usr/openv/netbackup/bin"
+        service_state: "running"
