@@ -1,0 +1,130 @@
+---
+- name: Automate AKS Configuration, Managed Identity, and Federated Credential Setup
+  hosts: localhost
+  vars:
+    var_file: "{{ lookup('env', 'VAR_FILE') | default('path_to_var_file.yml') }}"
+    resource_group_name: "{{ lookup('env', 'RESOURCE_GROUP_NAME') | default('myResourceGroup') }}"
+    location: "{{ lookup('env', 'LOCATION') | default('eastus') }}"
+    subscription_id: "{{ lookup('env', 'SUBSCRIPTION_ID') | default('your_subscription_id') }}"
+    artifact_version: "{{ lookup('env', 'ARTIFACT_VERSION') | default('latest') }}"
+    environment: "{{ lookup('env', 'ENV') | default('dev') }}"
+    client_managed_identity: "{{ lookup('env', 'CLIENT_MANAGED_IDENTITY') | default('myClientManagedIdentity') }}"
+    secret_managed_identity: "{{ lookup('env', 'SECRET_MANAGED_IDENTITY') | default('mySecretManagedIdentity') }}"
+    federated_credential_name: "{{ lookup('env', 'FEDERATED_CREDENTIAL_NAME') | default('federated_credential') }}"
+    issuer: "{{ lookup('env', 'OIDC_ISSUER') | default('https://issuer.example.com') }}"
+    subject_prefix: "system:serviceaccount"
+
+  tasks:
+    # Step 1: Configure Python repository and install dependencies
+    - name: Configure Python repository for dependencies
+      ansible.builtin.shell: |
+        pip config set global.trusted-host idtit-nexus-tp-repo.swissbank.com
+        pip config set global.index-url https://idtit-nexus-tp-repo.swissbank.com/repository/public-lib-python-pypi/simple
+        pip install pyyaml --user
+      register: python_config
+
+    - name: Assert Python configuration success
+      ansible.builtin.assert:
+        that:
+          - python_config.rc == 0
+        fail_msg: "Failed to configure Python repository or install dependencies."
+        success_msg: "Python repository configured and dependencies installed successfully."
+
+    # Step 2: Generate AKS ARM parameter files
+    - name: Generate AKS ARM parameter files
+      ansible.builtin.shell: |
+        python src/main/python-scripts/updateParams.py \
+          --env-yml {{ var_file }} \
+          --params-template src/main/aks/dev/k8s.azure.managedidentity.params._template.json \
+          --prefix-to-remove aks
+      register: param_generation
+
+    - name: Assert AKS parameter file generation success
+      ansible.builtin.assert:
+        that:
+          - param_generation.rc == 0
+        fail_msg: "Failed to generate AKS ARM parameter files."
+        success_msg: "AKS ARM parameter files generated successfully."
+
+    # Step 3: Deploy AKS cluster
+    - name: Deploy AKS cluster
+      azure.azcollection.azure_rm_deployment:
+        state: present
+        subscription_id: "{{ subscription_id }}"
+        resource_group: "{{ resource_group_name }}"
+        name: "{{ environment }}-cluster-{{ lookup('env', 'CLUSTER_SUFFIX') | default('defaultSuffix') }}"
+        template_path: src/main/aks/dev/k8s.azure.managedidentity.json
+        parameters:
+          extraTags:
+            clusterType: "uk8s"
+            codeVersion: "{{ artifact_version }}"
+      register: deployment
+
+    - name: Assert AKS deployment success
+      ansible.builtin.assert:
+        that:
+          - deployment.state == "Succeeded"
+        fail_msg: "AKS deployment failed."
+        success_msg: "AKS deployment completed successfully."
+
+    # Step 4: Create Managed Identities
+    - name: Create client managed identity
+      azure.azcollection.azure_rm_managedidentity:
+        name: "{{ client_managed_identity }}"
+        resource_group: "{{ resource_group_name }}"
+        location: "{{ location }}"
+      register: client_identity_creation
+
+    - name: Assert client managed identity creation
+      ansible.builtin.assert:
+        that:
+          - client_identity_creation.state == "Succeeded"
+        fail_msg: "Failed to create client managed identity."
+        success_msg: "Client managed identity created successfully."
+
+    - name: Create secret managed identity
+      azure.azcollection.azure_rm_managedidentity:
+        name: "{{ secret_managed_identity }}"
+        resource_group: "{{ resource_group_name }}"
+        location: "{{ location }}"
+      register: secret_identity_creation
+
+    - name: Assert secret managed identity creation
+      ansible.builtin.assert:
+        that:
+          - secret_identity_creation.state == "Succeeded"
+        fail_msg: "Failed to create secret managed identity."
+        success_msg: "Secret managed identity created successfully."
+
+    # Step 5: Create Federated Credentials
+    - name: Create federated credentials for client managed identity
+      azure.azcollection.azure_rm_federatedidentitycredential:
+        name: "{{ federated_credential_name }}_workload_identity"
+        managed_identity_name: "{{ client_managed_identity }}"
+        resource_group: "{{ resource_group_name }}"
+        issuer: "{{ issuer }}"
+        subject: "{{ subject_prefix }}/{{ resource_group_name }}:default"
+      register: federated_client_credential
+
+    - name: Assert federated credentials for client managed identity
+      ansible.builtin.assert:
+        that:
+          - federated_client_credential.state == "Succeeded"
+        fail_msg: "Failed to create federated credentials for client managed identity."
+        success_msg: "Federated credentials for client managed identity created successfully."
+
+    - name: Create federated credentials for secret managed identity
+      azure.azcollection.azure_rm_federatedidentitycredential:
+        name: "{{ federated_credential_name }}_vault"
+        managed_identity_name: "{{ secret_managed_identity }}"
+        resource_group: "{{ resource_group_name }}"
+        issuer: "{{ issuer }}"
+        subject: "{{ subject_prefix }}/{{ resource_group_name }}:vault"
+      register: federated_secret_credential
+
+    - name: Assert federated credentials for secret managed identity
+      ansible.builtin.assert:
+        that:
+          - federated_secret_credential.state == "Succeeded"
+        fail_msg: "Failed to create federated credentials for secret managed identity."
+        success_msg: "Federated credentials for secret managed identity created successfully."

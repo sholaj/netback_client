@@ -1,0 +1,105 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-spot-worker-node-selector
+  annotations:
+    policies.kyverno.io/title: Enforce Spot Worker NodeSelector
+    policies.kyverno.io/category: Workload Scheduling
+    policies.kyverno.io/description: |
+      Automatically add a `nodeSelector` to schedule workloads on spot instances
+      with the labels `spot=true` and `worker=true`, while excluding specific namespaces.
+spec:
+  rules:
+    - name: add-spot-worker-node-selector
+      match:
+        resources:
+          kinds:
+            - Pod
+      exclude:
+        resources:
+          namespaces:
+            - kube-system
+            - external-dns
+            - some-other-namespace
+      mutate:
+        patchStrategicMerge:
+          spec:
+            nodeSelector:
+              spot: "true"
+              worker: "true"
+
+
+
+If you’ve downloaded the Kyverno Helm chart locally, you can install it from the local files without needing internet access. Follow these steps:
+
+1. Download the Kyverno Helm Chart
+
+Make sure you have the Kyverno Helm chart files (e.g., downloaded from GitHub).
+
+If you haven’t already downloaded it:
+	1.	Clone the Kyverno repository:
+
+git clone https://github.com/kyverno/kyverno.git
+
+
+	2.	Navigate to the charts/kyverno directory:
+
+cd kyverno/charts/kyverno
+
+2. Install from the Local Chart
+
+Once you have the Helm chart downloaded, you can install Kyverno using the local chart directory:
+	1.	Run the helm install command:
+
+helm install kyverno ./ --namespace kyverno --create-namespace
+
+Here:
+	•	kyverno is the name of the Helm release.
+	•	./ points to the current directory containing the Chart.yaml file.
+	•	--namespace kyverno ensures Kyverno is installed in its own namespace.
+	•	--create-namespace creates the namespace if it doesn’t exist.
+
+3. Verify the Installation
+
+Check if the Kyverno pods are running:
+
+kubectl get pods -n kyverno
+
+You should see Kyverno-related pods, such as:
+
+NAME                                      READY   STATUS    RESTARTS   AGE
+kyverno-xxxx-xxxx                         1/1     Running   0          xxm
+kyverno-cleanup-controller-xxxx-xxxx      1/1     Running   0          xxm
+
+4. Customize Installation Using values.yaml
+
+If you need to customize the installation (e.g., enable specific features), modify the values.yaml file in the Helm chart directory before running the helm install command.
+	1.	Open the values.yaml file in an editor:
+
+nano values.yaml
+
+
+	2.	Modify any settings as needed.
+	3.	Install using the customized values.yaml:
+
+helm install kyverno ./ --namespace kyverno --create-namespace -f values.yaml
+
+5. Upgrade or Reinstall (If Necessary)
+
+If you need to reapply the chart after making changes to values.yaml:
+
+helm upgrade kyverno ./ --namespace kyverno -f values.yaml
+
+6. Alternative: Use kubectl with YAML
+
+If you cannot use Helm at all, you can deploy Kyverno directly with YAML manifests:
+	1.	Download the manifest file:
+
+wget https://raw.githubusercontent.com/kyverno/kyverno/main/definitions/install.yaml
+
+
+	2.	Apply the manifest:
+
+kubectl apply -f install.yaml
+
+This method allows you to install Kyverno entirely offline using the downloaded chart or manifest. Let me know if you encounter any issues!
