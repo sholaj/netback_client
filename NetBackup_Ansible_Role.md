@@ -562,3 +562,37 @@ Here is a breakdown of the scenarios from the BDD tests and how the tasks addres
 5. **Iterate Based on Test Outputs:**
    - Compare the outputs with the BDD tests.
    - Debug any failures and update tasks as required.
+
+
+#######
+1. Scenario: Adding a Master Server Block
+	•	Goal: Ensure that a new master server block is added correctly if the client doesn’t have a master server.
+	•	Actions:
+	•	Verify the “Design Master” details from the configuration.
+	•	Ensure secure communication setup (e.g., CA fingerprint, auth tokens).
+	•	Add the master server block to the client’s configuration.
+
+2. Scenario: Retaining Existing Master Servers
+	•	Goal: Existing master servers should remain configured if they are still valid.
+	•	Actions:
+	•	Check for master servers already listed on the client.
+	•	Validate compatibility with the client’s NetBackup version.
+	•	Retain master servers in the original order.
+
+3. Scenario: Handling Invalid or Missing Entries
+	•	Goal: Detect and fix invalid or incomplete master/media server entries in the client’s configuration.
+	•	Actions:
+	•	Detect entries with invalid FQDNs or IPs and repair them.
+	•	Fill in any missing server details from the central configuration.
+
+4. Scenario: Preserving Custom Server Entries
+	•	Goal: Custom configurations on the client must be retained during updates.
+	•	Actions:
+	•	Identify custom server entries in the client’s configuration.
+	•	Ensure these entries are not removed or altered during updates.
+
+5. Scenario: Not Updating Servers Based on Feature Flags
+	•	Goal: Skip server list updates if the corresponding feature flag is disabled.
+	•	Actions:
+	•	Respect the “it_manages_server_lists” feature flag.
+	•	Avoid any modifications to the client’s server list if this flag is false.
