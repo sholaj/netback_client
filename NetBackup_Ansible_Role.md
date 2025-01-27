@@ -254,6 +254,7 @@ ansible-galaxy init manage_server_list
 
 This creates the basic structure:
 
+```sh
 manage_server_list/
 ├── tasks/
 │   └── main.yml
@@ -264,6 +265,8 @@ manage_server_list/
 ├── defaults/
 ├── meta/
 └── tests/
+
+```
 
 4. Translate Puppet Logic to Ansible Tasks
 
