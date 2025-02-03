@@ -1,0 +1,118 @@
+# test_netbackup.yml - Quick test playbook
+---
+- hosts: localhost  # For testing, you can run against localhost
+  gather_facts: yes
+  vars:
+    test_config:
+      server:
+        - primary.netbackup.com
+        - secondary.netbackup.com
+      mediaserver:
+        - media1.netbackup.com
+        - media2.netbackup.com
+      client_name: "{{ ansible_hostname }}"
+      client_config:
+        CONNECT_OPTIONS: PREFERRED_NETWORK=192.168.1.0
+        CONNECT_TIMEOUT: 120
+        CLIENT_PORT_WINDOW: 4800 5000
+        CLIENT_READ_TIMEOUT: 300
+      policy:
+        - name: daily_backup
+          type: Standard
+          schedule: Incremental
+        - name: weekly_backup
+          type: MS-Windows
+          schedule: Full
+      paths:
+        - BROWSE_DIRECTORY = /data
+        - BROWSE_DIRECTORY = /apps
+        - EXCLUDE = /tmp
+        - EXCLUDE = /var/log
+  tasks:
+    - name: Create test directory
+      file:
+        path: /tmp/netbackup_test
+        state: directory
+
+    - name: Generate test configuration
+      template:
+        src: extended_nbconfig.j2
+        dest: /tmp/netbackup_test/test_config.txt
+
+    - name: Display generated configuration
+      command: cat /tmp/netbackup_test/test_config.txt
+      register: config_content
+
+    - name: Show configuration
+      debug:
+        msg: "{{ config_content.stdout_lines }}"
+
+# extended_nbconfig.j2 - Enhanced template with more configuration elements
+{% if nbconfig is defined %}
+  {% set config = nbconfig %}
+{% else %}
+  {% set config = test_config %}
+{% endif %}
+
+# Server Configuration
+{% for server in config.server %}
+SERVER = {{ server }}
+{% endfor %}
+
+# Media Server Configuration
+{% for media_server in config.mediaserver %}
+MEDIA_SERVER = {{ media_server }}
+{% endfor %}
+
+# Client Configuration
+CLIENT_NAME = {{ config.client_name }}
+
+# Connection Settings
+{% for key, value in config.client_config.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+# Policy Configuration
+{% for policy in config.policy %}
+POLICY {{ policy.name }}
+POLICY_TYPE = {{ policy.type }}
+SCHEDULE = {{ policy.schedule }}
+{% endfor %}
+
+# Path Configuration
+{% for path in config.paths %}
+{{ path }}
+{% endfor %}
+
+# roles/netbackup_config/templates/parse_config.j2 - Enhanced parser
+{% set config = {
+    'server': [],
+    'mediaserver': [],
+    'client_name': '',
+    'client_config': {},
+    'policy': [],
+    'paths': []
+} %}
+
+{% for line in nbconfig_output.stdout_lines %}
+{%   if line.startswith('SERVER = ') %}
+{%     set _ = config.server.append(line.split(' = ')[1]) %}
+{%   elif line.startswith('MEDIA_SERVER = ') %}
+{%     set _ = config.mediaserver.append(line.split(' = ')[1]) %}
+{%   elif line.startswith('CLIENT_NAME = ') %}
+{%     set config.client_name = line.split(' = ')[1] %}
+{%   elif line.startswith('CONNECT_') or line.startswith('CLIENT_') %}
+{%     set parts = line.split(' = ') %}
+{%     set _ = config.client_config.update({parts[0]: parts[1]}) %}
+{%   elif line.startswith('POLICY ') %}
+{%     set policy = {'name': line.split(' ')[1]} %}
+{%     set _ = config.policy.append(policy) %}
+{%   elif line.startswith('POLICY_TYPE = ') %}
+{%     set _ = config.policy[-1].update({'type': line.split(' = ')[1]}) %}
+{%   elif line.startswith('SCHEDULE = ') %}
+{%     set _ = config.policy[-1].update({'schedule': line.split(' = ')[1]}) %}
+{%   elif line.startswith('BROWSE_DIRECTORY = ') or line.startswith('EXCLUDE = ') %}
+{%     set _ = config.paths.append(line) %}
+{%   endif %}
+{% endfor %}
+{{ config }}

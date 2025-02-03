@@ -1,0 +1,84 @@
+# roles/netbackup_config/tasks/main.yml
+---
+- name: Validate action parameter
+  fail:
+    msg: "Action must be either 'getconfig' or 'setconfig'"
+  when: netbackup_action not in ['getconfig', 'setconfig']
+
+- name: Include OS specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_os_family }}.yml"
+    - "default.yml"
+
+- name: Execute NetBackup configuration tasks
+  include_tasks: "{{ netbackup_action }}.yml"
+
+# roles/netbackup_config/tasks/getconfig.yml
+---
+- name: Get NetBackup configuration (Linux)
+  shell: /usr/openv/netbackup/bin/admincmd/nbgetconfig
+  register: nbconfig_output
+  when: ansible_os_family == "Linux"
+
+- name: Get NetBackup configuration (Windows)
+  win_shell: C:\Program Files\Veritas\NetBackup\bin\admincmd\nbgetconfig.exe
+  register: nbconfig_output
+  when: ansible_os_family == "Windows"
+
+- name: Parse NetBackup configuration
+  set_fact:
+    parsed_config: "{{ lookup('template', 'parse_config.j2') }}"
+
+- name: Save configuration to JSON
+  copy:
+    content: "{{ parsed_config | to_nice_json }}"
+    dest: "{{ netbackup_config_path }}/nbconfig.json"
+
+# roles/netbackup_config/tasks/setconfig.yml
+---
+- name: Create temporary configuration file
+  template:
+    src: nbconfig.j2
+    dest: "{{ netbackup_temp_path }}/nbconfig.tmp"
+
+- name: Apply NetBackup configuration (Linux)
+  shell: /usr/openv/netbackup/bin/admincmd/nbsetconfig < {{ netbackup_temp_path }}/nbconfig.tmp
+  when: ansible_os_family == "Linux"
+
+- name: Apply NetBackup configuration (Windows)
+  win_shell: Get-Content {{ netbackup_temp_path }}/nbconfig.tmp | C:\Program Files\Veritas\NetBackup\bin\admincmd\nbsetconfig.exe
+  when: ansible_os_family == "Windows"
+
+# roles/netbackup_config/templates/parse_config.j2
+{% set config = {'server': [], 'mediaserver': []} %}
+{% for line in nbconfig_output.stdout_lines %}
+{%   if line.startswith('SERVER = ') %}
+{%     set _ = config.server.append(line.split(' = ')[1]) %}
+{%   elif line.startswith('MEDIA_SERVER = ') %}
+{%     set _ = config.mediaserver.append(line.split(' = ')[1]) %}
+{%   endif %}
+{% endfor %}
+{{ config }}
+
+# roles/netbackup_config/templates/nbconfig.j2
+{% for server in nbconfig.server %}
+SERVER = {{ server }}
+{% endfor %}
+{% for media_server in nbconfig.mediaserver %}
+MEDIA_SERVER = {{ media_server }}
+{% endfor %}
+
+# roles/netbackup_config/defaults/main.yml
+---
+netbackup_action: getconfig
+netbackup_config_path: /tmp
+netbackup_temp_path: /tmp
+
+# roles/netbackup_config/vars/Linux.yml
+---
+netbackup_bin_path: /usr/openv/netbackup/bin/admincmd
+
+# roles/netbackup_config/vars/Windows.yml
+---
+netbackup_bin_path: C:\Program Files\Veritas\NetBackup\bin\admincmd

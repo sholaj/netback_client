@@ -1,0 +1,75 @@
+# roles/netbackup_config/templates/parse_config.j2
+{% set config = {
+    'server': [],           # List for multiple SERVER entries
+    'mediaserver': [],      # List for multiple MEDIA_SERVER entries
+    'client_name': '',      
+    'client_config': {},
+    'serverlist': {},       # Dictionary to hold server-specific configurations
+    'policy': [],
+    'paths': []
+} %}
+
+{% for line in nbconfig_output.stdout_lines %}
+{%   set line = line | trim %}
+{%   if line %}  {# Skip empty lines #}
+{%     if line.startswith('SERVER ') %}
+{%       if '=' in line %}
+{%         set server = line.split('=')[1] | trim %}
+{%         set _ = config.server.append(server) %}
+{%       else %}
+{%         set parts = line.split(' ') %}
+{%         if parts | length > 2 %}
+{%           set server_name = parts[1] | trim %}
+{%           set server_config = ' '.join(parts[2:]) | trim %}
+{%           if server_name not in config.serverlist %}
+{%             set _ = config.serverlist.update({server_name: []}) %}
+{%           endif %}
+{%           set _ = config.serverlist[server_name].append(server_config) %}
+{%         endif %}
+{%       endif %}
+{%     endif %}
+{%   endif %}
+{% endfor %}
+
+# roles/netbackup_config/templates/nbconfig.j2
+# Server Configuration
+{% for server in nbconfig.server %}
+SERVER = {{ server }}
+{% endfor %}
+
+{% if nbconfig.serverlist is defined %}
+{% for server_name, configs in nbconfig.serverlist.items() %}
+{% for config in configs %}
+SERVER {{ server_name }} {{ config }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+# Example test playbook
+---
+- hosts: localhost
+  gather_facts: yes
+  vars:
+    test_config:
+      server:
+        - primary.netbackup.com
+        - secondary.netbackup.com
+      serverlist:
+        primary.netbackup.com:
+          - "PREFERRED_NETWORK 192.168.1.0"
+          - "CONNECT_TIMEOUT 120"
+        secondary.netbackup.com:
+          - "PREFERRED_NETWORK 192.168.2.0"
+          - "CONNECT_TIMEOUT 180"
+      mediaserver:
+        - media1.netbackup.com
+        - media2.netbackup.com
+
+# Example NetBackup config that this can parse:
+# SERVER = primary.netbackup.com
+# SERVER = secondary.netbackup.com
+# SERVER primary.netbackup.com PREFERRED_NETWORK 192.168.1.0
+# SERVER primary.netbackup.com CONNECT_TIMEOUT 120
+# SERVER secondary.netbackup.com PREFERRED_NETWORK 192.168.2.0
+# MEDIA_SERVER = media1.netbackup.com
+# MEDIA_SERVER = media2.netbackup.com
