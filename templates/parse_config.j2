@@ -1,0 +1,32 @@
+# roles/netbackup_config/templates/parse_config.j2 - Enhanced parser
+{% set config = {
+    'server': [],
+    'mediaserver': [],
+    'client_name': '',
+    'client_config': {},
+    'policy': [],
+    'paths': []
+} %}
+
+{% for line in nbconfig_output.stdout_lines %}
+{%   if line.startswith('SERVER = ') %}
+{%     set _ = config.server.append(line.split(' = ')[1]) %}
+{%   elif line.startswith('MEDIA_SERVER = ') %}
+{%     set _ = config.mediaserver.append(line.split(' = ')[1]) %}
+{%   elif line.startswith('CLIENT_NAME = ') %}
+{%     set config.client_name = line.split(' = ')[1] %}
+{%   elif line.startswith('CONNECT_') or line.startswith('CLIENT_') %}
+{%     set parts = line.split(' = ') %}
+{%     set _ = config.client_config.update({parts[0]: parts[1]}) %}
+{%   elif line.startswith('POLICY ') %}
+{%     set policy = {'name': line.split(' ')[1]} %}
+{%     set _ = config.policy.append(policy) %}
+{%   elif line.startswith('POLICY_TYPE = ') %}
+{%     set _ = config.policy[-1].update({'type': line.split(' = ')[1]}) %}
+{%   elif line.startswith('SCHEDULE = ') %}
+{%     set _ = config.policy[-1].update({'schedule': line.split(' = ')[1]}) %}
+{%   elif line.startswith('BROWSE_DIRECTORY = ') or line.startswith('EXCLUDE = ') %}
+{%     set _ = config.paths.append(line) %}
+{%   endif %}
+{% endfor %}
+{{ config }}
